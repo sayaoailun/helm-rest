@@ -380,8 +380,8 @@ func enrichSwaggerObject(swo *spec.Swagger) {
 			Contact: &spec.ContactInfo{
 				ContactInfoProps: spec.ContactInfoProps{
 					Name:  "郭建伟",
-					Email: "guojwe@dcits.com",
-					URL:   "http://dcits.com/",
+					Email: "guojianwei007@126.com",
+					URL:   "https://github.com/sayaoailun",
 				},
 			},
 			License: &spec.License{
