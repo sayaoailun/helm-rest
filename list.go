@@ -17,7 +17,7 @@ limitations under the License.
 package main
 
 import (
-	"os"
+	"log"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/release"
@@ -51,12 +51,19 @@ flag with the '--offset' flag allows you to page through results.
 `
 
 func list(namespace string) ([]*release.Release, error) {
-	cfg := new(action.Configuration)
-	client := action.NewList(cfg)
-	client.All = true
-	if err := cfg.Init(settings.RESTClientGetter(), "", os.Getenv("HELM_DRIVER"), debug); err != nil {
+	s, err := newSettings(namespace)
+	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
+	cfg, err := newConfig(namespace, s)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	client := action.NewList(cfg)
+	client.All = true
 	if namespace == "" {
 		client.AllNamespaces = true
 	}
@@ -64,6 +71,7 @@ func list(namespace string) ([]*release.Release, error) {
 
 	results, err := client.Run()
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 	return results, nil

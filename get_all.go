@@ -18,7 +18,6 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/release"
@@ -30,13 +29,18 @@ notes, hooks, supplied values, and generated manifest file of the given release.
 `
 
 func getAll(releaseName string, namespace string) (*release.Release, error) {
-	cfg := actionConfig
-	if err := cfg.Init(settings.RESTClientGetter(), namespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
-		log.Fatal(err)
+	s, err := newSettings(namespace)
+	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
+	cfg, err := newConfig(namespace, s)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
 	client := action.NewGet(cfg)
-	log.Println(releaseName)
 	res, err := client.Run(releaseName)
 	if err != nil {
 		return nil, err

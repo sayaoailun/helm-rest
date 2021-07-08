@@ -18,18 +18,10 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
-	"os"
-	"time"
-
-	"github.com/gosuri/uitable"
-	"github.com/pkg/errors"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 	helmtime "helm.sh/helm/v3/pkg/time"
@@ -52,22 +44,22 @@ The historical release set is printed as a formatted table, e.g:
 `
 
 func history(releaseName string, namespace string, max int) (releaseHistory, error) {
-	cfg := actionConfig
-	if err := cfg.Init(settings.RESTClientGetter(), namespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
-		log.Fatal(err)
+	s, err := newSettings(namespace)
+	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
-	config, ok := settings.RESTClientGetter().(*genericclioptions.ConfigFlags)
-	if ok {
-		config.Namespace = &namespace
-	} else {
-		return nil, errors.New("namespace not set")
+	cfg, err := newConfig(namespace, s)
+	if err != nil {
+		log.Println(err)
+		return nil, err
 	}
 
 	client := action.NewHistory(cfg)
 	client.Max = max
 	history, err := getHistory(client, releaseName)
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 	return history, nil
@@ -83,23 +75,6 @@ type releaseInfo struct {
 }
 
 type releaseHistory []releaseInfo
-
-func (r releaseHistory) WriteJSON(out io.Writer) error {
-	return output.EncodeJSON(out, r)
-}
-
-func (r releaseHistory) WriteYAML(out io.Writer) error {
-	return output.EncodeYAML(out, r)
-}
-
-func (r releaseHistory) WriteTable(out io.Writer) error {
-	tbl := uitable.New()
-	tbl.AddRow("REVISION", "UPDATED", "STATUS", "CHART", "APP VERSION", "DESCRIPTION")
-	for _, item := range r {
-		tbl.AddRow(item.Revision, item.Updated.Format(time.ANSIC), item.Status, item.Chart, item.AppVersion, item.Description)
-	}
-	return output.EncodeTable(out, tbl)
-}
 
 func getHistory(client *action.History, name string) (releaseHistory, error) {
 	hist, err := client.Run(name)

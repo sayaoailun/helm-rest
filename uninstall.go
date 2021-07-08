@@ -21,9 +21,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/action"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 const uninstallDesc = `
@@ -38,22 +36,24 @@ uninstalling them.
 
 func uninstall(releaseNames []string, namespace string) error {
 	out := os.Stdout
-	cfg := actionConfig
-	if err := cfg.Init(settings.RESTClientGetter(), namespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
-		log.Fatal(err)
+
+	s, err := newSettings(namespace)
+	if err != nil {
+		log.Println(err)
 		return err
 	}
-	config, ok := settings.RESTClientGetter().(*genericclioptions.ConfigFlags)
-	if ok {
-		config.Namespace = &namespace
-	} else {
-		return errors.New("namespace not set")
+	cfg, err := newConfig(namespace, s)
+	if err != nil {
+		log.Println(err)
+		return err
 	}
+
 	client := action.NewUninstall(cfg)
 	for i := 0; i < len(releaseNames); i++ {
 
 		res, err := client.Run(releaseNames[i])
 		if err != nil {
+			log.Println(err)
 			return err
 		}
 		if res != nil && res.Info != "" {

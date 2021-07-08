@@ -21,7 +21,6 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -59,17 +58,17 @@ set for a key called 'foo', the 'newbar' value would take precedence:
 `
 
 func upgrade(releaseInfo *ReleaseInfo) (*release.Release, error) {
-	cfg := actionConfig
-	if err := cfg.Init(settings.RESTClientGetter(), releaseInfo.Namespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
-		log.Fatal(err)
+	s, err := newSettings(releaseInfo.Namespace)
+	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
-	config, ok := settings.RESTClientGetter().(*genericclioptions.ConfigFlags)
-	if ok {
-		config.Namespace = &releaseInfo.Namespace
-	} else {
-		return nil, errors.New("namespace not set")
+	cfg, err := newConfig(releaseInfo.Namespace, s)
+	if err != nil {
+		log.Println(err)
+		return nil, err
 	}
+
 	valueOpts := &helmValues.Options{}
 	valueOpts.Values = releaseInfo.Values
 	out := os.Stdout
@@ -77,7 +76,7 @@ func upgrade(releaseInfo *ReleaseInfo) (*release.Release, error) {
 	client := action.NewUpgrade(cfg)
 	createNamespace := true
 
-	client.Namespace = settings.Namespace()
+	client.Namespace = releaseInfo.Namespace
 
 	// Fixes #7002 - Support reading values from STDIN for `upgrade` command
 	// Must load values AFTER determining if we have to call install so that values loaded from stdin are are not read twice
@@ -103,7 +102,7 @@ func upgrade(releaseInfo *ReleaseInfo) (*release.Release, error) {
 			instClient.SubNotes = client.SubNotes
 			instClient.Description = client.Description
 
-			rel, err := runInstall(args, instClient, valueOpts, out)
+			rel, err := runInstall(args, instClient, valueOpts, out, settingsGlobal)
 			if err != nil {
 				return nil, err
 			}
@@ -118,12 +117,12 @@ func upgrade(releaseInfo *ReleaseInfo) (*release.Release, error) {
 		client.Version = ">0.0.0-0"
 	}
 
-	chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
+	chartPath, err := client.ChartPathOptions.LocateChart(args[1], settingsGlobal)
 	if err != nil {
 		return nil, err
 	}
 
-	vals, err := valueOpts.MergeValues(getter.All(settings))
+	vals, err := valueOpts.MergeValues(getter.All(settingsGlobal))
 	if err != nil {
 		return nil, err
 	}

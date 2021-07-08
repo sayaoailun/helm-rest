@@ -21,5 +21,5 @@ import (
 )
 
 func listRepo() (*repo.File, error) {
-	return repo.LoadFile(settings.RepositoryConfig)
+	return repo.LoadFile(settingsGlobal.RepositoryConfig)
 }

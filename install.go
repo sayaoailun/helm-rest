@@ -22,11 +22,11 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/cli/values"
 	helmValues "helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/downloader"
@@ -102,16 +102,15 @@ charts in a repository, use 'helm search'.
 `
 
 func install(releaseInfo *ReleaseInfo) (*release.Release, error) {
-	cfg := actionConfig
-	if err := cfg.Init(settings.RESTClientGetter(), releaseInfo.Namespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
-		log.Fatal(err)
+	s, err := newSettings(releaseInfo.Namespace)
+	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
-	config, ok := settings.RESTClientGetter().(*genericclioptions.ConfigFlags)
-	if ok {
-		config.Namespace = &releaseInfo.Namespace
-	} else {
-		return nil, errors.New("namespace not set")
+	cfg, err := newConfig(releaseInfo.Namespace, s)
+	if err != nil {
+		log.Println(err)
+		return nil, err
 	}
 
 	client := action.NewInstall(cfg)
@@ -120,14 +119,16 @@ func install(releaseInfo *ReleaseInfo) (*release.Release, error) {
 	out := os.Stdout
 	args := []string{releaseInfo.Name, releaseInfo.Chart}
 	client.CreateNamespace = true
-	rel, err := runInstall(args, client, valueOpts, out)
+	client.Namespace = releaseInfo.Namespace
+	rel, err := runInstall(args, client, valueOpts, out, s)
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 	return rel, nil
 }
 
-func runInstall(args []string, client *action.Install, valueOpts *values.Options, out io.Writer) (*release.Release, error) {
+func runInstall(args []string, client *action.Install, valueOpts *values.Options, out io.Writer, settings *cli.EnvSettings) (*release.Release, error) {
 	debug("Original chart version: %q", client.Version)
 	if client.Version == "" && client.Devel {
 		debug("setting version to >0.0.0-0")
@@ -196,7 +197,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		}
 	}
 
-	client.Namespace = settings.Namespace()
+	// client.Namespace = settings.Namespace()
 	return client.Run(chartRequested, vals)
 }
 

@@ -67,8 +67,8 @@ type searchRepoOptions struct {
 
 func searchRepo(keyword string) ([]*search.Result, error) {
 	o := &searchRepoOptions{}
-	o.repoFile = settings.RepositoryConfig
-	o.repoCacheDir = settings.RepositoryCache
+	o.repoFile = settingsGlobal.RepositoryConfig
+	o.repoCacheDir = settingsGlobal.RepositoryCache
 	o.setupSearchedVersion()
 
 	index, err := o.buildIndex()

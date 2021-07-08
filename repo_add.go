@@ -65,8 +65,8 @@ func addRepo(repoinfo *repo.Entry) error {
 	o := &repoAddOptions{}
 	o.name = repoinfo.Name
 	o.url = repoinfo.URL
-	o.repoFile = settings.RepositoryConfig
-	o.repoCache = settings.RepositoryCache
+	o.repoFile = settingsGlobal.RepositoryConfig
+	o.repoCache = settingsGlobal.RepositoryCache
 
 	out := os.Stdout
 
@@ -147,7 +147,7 @@ func addRepo(repoinfo *repo.Entry) error {
 		return nil
 	}
 
-	r, err := repo.NewChartRepository(&c, getter.All(settings))
+	r, err := repo.NewChartRepository(&c, getter.All(settingsGlobal))
 	if err != nil {
 		return err
 	}

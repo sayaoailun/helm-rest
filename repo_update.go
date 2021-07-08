@@ -42,8 +42,8 @@ type repoUpdateOptions struct {
 func updateRepo() error {
 	out := os.Stdout
 	o := &repoUpdateOptions{}
-	o.repoFile = settings.RepositoryConfig
-	o.repoCache = settings.RepositoryCache
+	o.repoFile = settingsGlobal.RepositoryConfig
+	o.repoCache = settingsGlobal.RepositoryCache
 	f, err := repo.LoadFile(o.repoFile)
 	switch {
 	case isNotExist(err):
@@ -56,7 +56,7 @@ func updateRepo() error {
 
 	var repos []*repo.ChartRepository
 	for _, cfg := range f.Repositories {
-		r, err := repo.NewChartRepository(cfg, getter.All(settings))
+		r, err := repo.NewChartRepository(cfg, getter.All(settingsGlobal))
 		if err != nil {
 			return err
 		}
@@ -65,7 +65,6 @@ func updateRepo() error {
 		}
 		repos = append(repos, r)
 	}
-
 
 	fmt.Fprintln(out, "Hang tight while we grab the latest from your chart repositories...")
 	var wg sync.WaitGroup

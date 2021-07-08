@@ -18,11 +18,8 @@ package main
 
 import (
 	"log"
-	"os"
 
-	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/action"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 const rollbackDesc = `
@@ -36,22 +33,22 @@ To see revision numbers, run 'helm history RELEASE'.
 `
 
 func rollback(releaseInfo *ReleaseInfo) error {
-	cfg := actionConfig
-	if err := cfg.Init(settings.RESTClientGetter(), releaseInfo.Namespace, os.Getenv("HELM_DRIVER"), debug); err != nil {
-		log.Fatal(err)
+	s, err := newSettings(releaseInfo.Namespace)
+	if err != nil {
+		log.Println(err)
 		return err
 	}
-	config, ok := settings.RESTClientGetter().(*genericclioptions.ConfigFlags)
-	if ok {
-		config.Namespace = &releaseInfo.Namespace
-	} else {
-		return errors.New("namespace not set")
+	cfg, err := newConfig(releaseInfo.Namespace, s)
+	if err != nil {
+		log.Println(err)
+		return err
 	}
 
 	client := action.NewRollback(cfg)
 	client.Version = releaseInfo.Version
 
 	if err := client.Run(releaseInfo.Name); err != nil {
+		log.Println(err)
 		return err
 	}
 

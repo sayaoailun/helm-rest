@@ -36,8 +36,8 @@ type repoRemoveOptions struct {
 func removeRepo(names []string) error {
 	out := os.Stdout
 	o := &repoRemoveOptions{}
-	o.repoFile = settings.RepositoryConfig
-	o.repoCache = settings.RepositoryCache
+	o.repoFile = settingsGlobal.RepositoryConfig
+	o.repoCache = settingsGlobal.RepositoryCache
 	o.names = names
 
 	r, err := repo.LoadFile(o.repoFile)
