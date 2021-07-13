@@ -16,6 +16,10 @@ A demo for Helm3 with RestfulAPI
   - update
 - chart
   - search repo
+  - create
+  - package
+  - edit
+  - upload to repo
 - release
   - list
   - get all
