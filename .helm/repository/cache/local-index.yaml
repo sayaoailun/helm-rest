@@ -1,0 +1,15 @@
+apiVersion: v1
+entries:
+  guojwe-nginx:
+  - apiVersion: v2
+    appVersion: 1.16.0
+    created: "2021-07-13T05:23:07.378831656Z"
+    description: A Helm chart for Kubernetes
+    digest: 23a847b8eed74773d269c194838f97500a60c4b3a1954c881ed925c04f307b07
+    name: guojwe-nginx
+    type: application
+    urls:
+    - charts/guojwe-nginx-0.1.0.tgz
+    version: 0.1.0
+generated: "2021-07-13T05:23:07Z"
+serverInfo: {}

@@ -19,3 +19,12 @@ repositories:
   password: ""
   url: https://charts.bitnami.com/bitnami
   username: ""
+- caFile: ""
+  certFile: ""
+  insecure_skip_tls_verify: false
+  keyFile: ""
+  name: local
+  pass_credentials_all: false
+  password: ""
+  url: http://192.168.56.101:8080
+  username: ""

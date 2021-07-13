@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -290,9 +292,326 @@ func (h HelmResource) rollback(req *restful.Request, resp *restful.Response) {
 	resp.WriteHeaderAndEntity(http.StatusOK, result)
 }
 
+func (h HelmResource) create(req *restful.Request, resp *restful.Response) {
+	chartName := req.PathParameter("chart-name")
+	err := create(chartName)
+	if err != nil {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	result := &Result{}
+	result.Result = true
+	result.Message = "chart created successfully"
+	resp.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (h HelmResource) packageChart(req *restful.Request, resp *restful.Response) {
+	chartName := req.PathParameter("chart-name")
+	err := packageChart(chartName)
+	if err != nil {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	result := &Result{}
+	result.Result = true
+	result.Message = "chart packaged successfully"
+	resp.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (h HelmResource) upload(req *restful.Request, resp *restful.Response) {
+	repoName := req.PathParameter("repo-name")
+	chartName := req.PathParameter("chart-name")
+	chartPackage := req.PathParameter("chart-package-name")
+	message, err := upload(chartPackage, chartName, repoName)
+	if err != nil {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	result := &Result{}
+	result.Result = true
+	result.Message = message
+	resp.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (h HelmResource) getChartFile(req *restful.Request, resp *restful.Response) {
+	chartName := req.PathParameter("chart-name")
+	filePath := req.PathParameter("file-path")
+	chartDir := ".helm/charts"
+	// Ensure the chart directory exists
+	err := os.MkdirAll(chartDir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	file := fmt.Sprintf("%s/%s/%s", chartDir, chartName, filePath)
+	http.ServeFile(
+		resp.ResponseWriter,
+		req.Request,
+		file)
+}
+
+func (h HelmResource) editChartFile(req *restful.Request, resp *restful.Response) {
+	chartName := req.PathParameter("chart-name")
+	filePath := req.PathParameter("file-path")
+	chartDir := ".helm/charts"
+	// Ensure the chart directory exists
+	err := os.MkdirAll(chartDir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	file := fmt.Sprintf("%s/%s/%s", chartDir, chartName, filePath)
+	dir, _ := filepath.Split(file)
+	// Ensure the chart file path exists
+	err = os.MkdirAll(dir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	content, err := ioutil.ReadAll(req.Request.Body)
+	if err != nil {
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	err = ioutil.WriteFile(file, content, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	result := &Result{}
+	result.Result = true
+	result.Message = "update successfully"
+	resp.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (h HelmResource) removeChartFile(req *restful.Request, resp *restful.Response) {
+	chartName := req.PathParameter("chart-name")
+	filePath := req.PathParameter("file-path")
+	chartDir := ".helm/charts"
+	// Ensure the chart directory exists
+	err := os.MkdirAll(chartDir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	file := fmt.Sprintf("%s/%s/%s", chartDir, chartName, filePath)
+	err = os.Remove(file)
+	if err != nil && !os.IsExist(err) {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	result := &Result{}
+	result.Result = true
+	result.Message = "remove successfully"
+	resp.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (h HelmResource) getChartFiles(req *restful.Request, resp *restful.Response) {
+	chartName := req.PathParameter("chart-name")
+	chartDir := ".helm/charts"
+	// Ensure the chart directory exists
+	err := os.MkdirAll(chartDir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	file := fmt.Sprintf("%s/%s", chartDir, chartName)
+	files := []string{}
+	err = filepath.Walk(file, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		// filepath.SplitList(path)[2:]
+		subPath, err := filepath.Rel(chartDir, path)
+		if err != nil {
+			return err
+		}
+		files = append(files, subPath)
+		return nil
+	})
+	if err != nil && !os.IsExist(err) {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	resp.WriteHeaderAndEntity(http.StatusOK, files)
+}
+
+func (h HelmResource) chartList(req *restful.Request, resp *restful.Response) {
+	chartDir := ".helm/charts"
+	// Ensure the chart directory exists
+	err := os.MkdirAll(chartDir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	fileNames := []string{}
+	files, err := os.ReadDir(chartDir)
+	if err != nil {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+
+	for _, file := range files {
+		fileNames = append(fileNames, file.Name())
+	}
+	resp.WriteHeaderAndEntity(http.StatusOK, fileNames)
+}
+
+func (h HelmResource) removeChart(req *restful.Request, resp *restful.Response) {
+	chartDir := ".helm/charts"
+	// Ensure the chart directory exists
+	err := os.MkdirAll(chartDir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	chartName := req.PathParameter("chart-name")
+	err = os.RemoveAll(fmt.Sprintf("%s/%s", chartDir, chartName))
+	if err != nil && !os.IsExist(err) {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	result := &Result{}
+	result.Result = true
+	result.Message = "remove chart successfully"
+	resp.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
+func (h HelmResource) packageList(req *restful.Request, resp *restful.Response) {
+	chartPackgeDir := ".helm/chart-package"
+	// Ensure the chart package directory exists
+	err := os.MkdirAll(chartPackgeDir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	chartName := req.PathParameter("chart-name")
+	f, err := os.Open(fmt.Sprintf("%s/%s", chartPackgeDir, chartName))
+	defer f.Close()
+	if err != nil {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	files, err := f.Readdir(-1)
+	if err != nil {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	fileNames := []string{}
+	for _, file := range files {
+		fileNames = append(fileNames, file.Name())
+	}
+	resp.WriteHeaderAndEntity(http.StatusOK, fileNames)
+}
+
+func (h HelmResource) removePackage(req *restful.Request, resp *restful.Response) {
+	chartPackgeDir := ".helm/chart-package"
+	// Ensure the chart package directory exists
+	err := os.MkdirAll(chartPackgeDir, os.ModePerm)
+	if err != nil && !os.IsExist(err) {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	chartName := req.PathParameter("chart-name")
+	chartPackageName := req.PathParameter("chart-package-name")
+	err = os.Remove(fmt.Sprintf("%s/%s/%s", chartPackgeDir, chartName, chartPackageName))
+	if err != nil && !os.IsExist(err) {
+		log.Println(err)
+		result := &Result{}
+		result.Result = false
+		result.Error = err.Error()
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, result)
+		return
+	}
+	result := &Result{}
+	result.Result = true
+	result.Message = "remove chart package successfully"
+	resp.WriteHeaderAndEntity(http.StatusOK, result)
+}
+
 func (h HelmResource) Register() {
 	charttags := []string{"chart"}
 	releasetags := []string{"release"}
+	repotags := []string{"repo"}
 
 	ws := new(restful.WebService)
 	ws.Path("/helm")
@@ -302,24 +621,25 @@ func (h HelmResource) Register() {
 	// repo
 	ws.Route(ws.GET("/repo").To(h.listRepo).
 		Doc("list chart repositories").
-		Metadata(restfulspec.KeyOpenAPITags, charttags).
+		Metadata(restfulspec.KeyOpenAPITags, repotags).
 		Returns(http.StatusOK, "OK", repo.File{}).
 		Returns(http.StatusInternalServerError, "inner error", Result{}))
 	ws.Route(ws.POST("/repo").To(h.addRepo).
 		Doc("add chart repository").
-		Metadata(restfulspec.KeyOpenAPITags, charttags).
+		Metadata(restfulspec.KeyOpenAPITags, repotags).
 		Reads(repo.Entry{}).
 		Returns(http.StatusCreated, "OK", Result{}).
 		Returns(http.StatusInternalServerError, "inner error", Result{}))
 	ws.Route(ws.PUT("/repo").To(h.updateRepo).
 		Doc("update chart repositories").
-		Metadata(restfulspec.KeyOpenAPITags, charttags).
+		Metadata(restfulspec.KeyOpenAPITags, repotags).
+		Reads(EmptyBody{}).
 		Returns(http.StatusOK, "OK", Result{}).
 		Returns(http.StatusInternalServerError, "inner error", Result{}))
 	ws.Route(ws.DELETE("/repo/{repo-name}").To(h.removeRepo).
 		Doc("remove chart repository").
 		Param(ws.PathParameter("repo-name", "name of the repo").DataType("string")).
-		Metadata(restfulspec.KeyOpenAPITags, charttags).
+		Metadata(restfulspec.KeyOpenAPITags, repotags).
 		Returns(http.StatusOK, "OK", Result{}).
 		Returns(http.StatusInternalServerError, "inner error", Result{}))
 
@@ -327,8 +647,85 @@ func (h HelmResource) Register() {
 	ws.Route(ws.GET("/search/repo").To(h.searchRepo).
 		Doc("search chart in repository").
 		Param(ws.QueryParameter("keyword", "keyword").DataType("string")).
-		Metadata(restfulspec.KeyOpenAPITags, charttags).
+		Metadata(restfulspec.KeyOpenAPITags, repotags).
 		Returns(http.StatusOK, "OK", []search.Result{}).
+		Returns(http.StatusInternalServerError, "inner error", Result{}))
+
+	// chart
+	ws.Route(ws.POST("/chart/{chart-name}").To(h.create).
+		Doc("create chart").
+		Param(ws.PathParameter("chart-name", "name of chart").DataType("string")).
+		Reads(EmptyBody{}).
+		Metadata(restfulspec.KeyOpenAPITags, charttags).
+		Returns(http.StatusOK, "OK", Result{}).
+		Returns(http.StatusInternalServerError, "inner error", Result{}))
+	ws.Route(ws.GET("/chart").To(h.chartList).
+		Doc("list chart").
+		Metadata(restfulspec.KeyOpenAPITags, charttags).
+		Returns(http.StatusOK, "OK", []string{}).
+		Returns(http.StatusInternalServerError, "inner error", Result{}))
+	ws.Route(ws.DELETE("/chart/{chart-name}").To(h.removeChart).
+		Doc("remove chart").
+		Param(ws.PathParameter("chart-name", "name of chart").DataType("string")).
+		Metadata(restfulspec.KeyOpenAPITags, charttags).
+		Returns(http.StatusOK, "OK", Result{}).
+		Returns(http.StatusInternalServerError, "inner error", Result{}))
+	ws.Route(ws.POST("/package/{chart-name}").To(h.packageChart).
+		Doc("package chart").
+		Param(ws.PathParameter("chart-name", "name of chart").DataType("string")).
+		Metadata(restfulspec.KeyOpenAPITags, charttags).
+		Reads(EmptyBody{}).
+		Returns(http.StatusOK, "OK", Result{}).
+		Returns(http.StatusInternalServerError, "inner error", Result{}))
+	ws.Route(ws.GET("/package/{chart-name}").To(h.packageList).
+		Doc("list chart package").
+		Param(ws.PathParameter("chart-name", "name of chart").DataType("string")).
+		Metadata(restfulspec.KeyOpenAPITags, charttags).
+		Returns(http.StatusOK, "OK", []string{}).
+		Returns(http.StatusInternalServerError, "inner error", Result{}))
+	ws.Route(ws.DELETE("/package/{chart-name}/{chart-package-name}").To(h.removePackage).
+		Doc("remove chart package").
+		Param(ws.PathParameter("chart-name", "name of chart").DataType("string")).
+		Param(ws.PathParameter("chart-package-name", "name of chart package").DataType("string")).
+		Metadata(restfulspec.KeyOpenAPITags, charttags).
+		Returns(http.StatusOK, "OK", []string{}).
+		Returns(http.StatusInternalServerError, "inner error", Result{}))
+	ws.Route(ws.POST("/upload/{repo-name}/{chart-name}/{chart-package-name}").To(h.upload).
+		Doc("upload chart").
+		Param(ws.PathParameter("repo-name", "name of repo").DataType("string")).
+		Param(ws.PathParameter("chart-name", "name of chart").DataType("string")).
+		Param(ws.PathParameter("chart-package-name", "name of chart package").DataType("string")).
+		Metadata(restfulspec.KeyOpenAPITags, charttags).
+		Reads(EmptyBody{}).
+		Returns(http.StatusOK, "OK", Result{}).
+		Returns(http.StatusInternalServerError, "inner error", Result{}))
+	ws.Route(ws.GET("/chart/{chart-name}/{file-path:*}").Produces("text/plain").To(h.getChartFile).
+		Doc("get chart file").
+		Param(ws.PathParameter("chart-name", "name of chart").DataType("string")).
+		Param(ws.PathParameter("file-path", "relative path of file").DataType("string")).
+		Metadata(restfulspec.KeyOpenAPITags, charttags).
+		Returns(http.StatusOK, "file content", "file content").
+		Returns(http.StatusInternalServerError, "inner error", Result{}))
+	ws.Route(ws.PUT("/chart/{chart-name}/{file-path:*}").Consumes("text/plain").To(h.editChartFile).
+		Doc("edit chart file").
+		Param(ws.PathParameter("chart-name", "name of chart").DataType("string")).
+		Param(ws.PathParameter("file-path", "relative path of file").DataType("string")).
+		Reads(EmptyBody{}).
+		Metadata(restfulspec.KeyOpenAPITags, charttags).
+		Returns(http.StatusOK, "OK", Result{}).
+		Returns(http.StatusInternalServerError, "inner error", Result{}))
+	ws.Route(ws.DELETE("/chart/{chart-name}/{file-path:*}").To(h.removeChartFile).
+		Doc("remove chart file").
+		Param(ws.PathParameter("chart-name", "name of chart").DataType("string")).
+		Param(ws.PathParameter("file-path", "relative path of file").DataType("string")).
+		Metadata(restfulspec.KeyOpenAPITags, charttags).
+		Returns(http.StatusOK, "OK", Result{}).
+		Returns(http.StatusInternalServerError, "inner error", Result{}))
+	ws.Route(ws.GET("/chart/{chart-name}").To(h.getChartFiles).
+		Doc("get chart files").
+		Param(ws.PathParameter("chart-name", "name of chart").DataType("string")).
+		Metadata(restfulspec.KeyOpenAPITags, charttags).
+		Returns(http.StatusOK, "OK", []string{}).
 		Returns(http.StatusInternalServerError, "inner error", Result{}))
 
 	// release
@@ -369,6 +766,7 @@ func (h HelmResource) Register() {
 		Doc("rollback release").
 		Reads(ReleaseInfo{}).
 		Metadata(restfulspec.KeyOpenAPITags, releasetags).
+		Reads(EmptyBody{}).
 		Returns(http.StatusOK, "OK", Result{}).
 		Returns(http.StatusInternalServerError, "inner error", Result{}))
 	ws.Route(ws.DELETE("/uninstall").To(h.uninstall).
@@ -406,8 +804,8 @@ func enrichSwaggerObject(swo *spec.Swagger) {
 			Contact: &spec.ContactInfo{
 				ContactInfoProps: spec.ContactInfoProps{
 					Name:  "Jianwei Guo",
-					Email: "guojianwei007@126.com",
-					URL:   "https://github.com/sayaoailun",
+					Email: "guojwe@dcits.com",
+					URL:   "http://dcits.com",
 				},
 			},
 			License: &spec.License{
@@ -423,7 +821,9 @@ func enrichSwaggerObject(swo *spec.Swagger) {
 		Name:        "chart",
 		Description: "chart operation"}}, spec.Tag{TagProps: spec.TagProps{
 		Name:        "release",
-		Description: "release operation"}}}
+		Description: "release operation"}}, spec.Tag{TagProps: spec.TagProps{
+		Name:        "repo",
+		Description: "repo operation"}}}
 }
 
 // response result
@@ -440,6 +840,10 @@ type ReleaseInfo struct {
 	Chart     string   `json:"chart" description:"chart of release" default:"string"`
 	Values    []string `json:"values" description:"values of release" default:"[]"`
 	Version   int      `json:"version" description:"version of release" default:"0"`
+}
+
+// information of release
+type EmptyBody struct {
 }
 
 func isNotExist(err error) bool {
