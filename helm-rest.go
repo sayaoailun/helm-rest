@@ -804,8 +804,8 @@ func enrichSwaggerObject(swo *spec.Swagger) {
 			Contact: &spec.ContactInfo{
 				ContactInfoProps: spec.ContactInfoProps{
 					Name:  "Jianwei Guo",
-					Email: "guojwe@dcits.com",
-					URL:   "http://dcits.com",
+					Email: "guojianwei007@126.com",
+					URL:   "https://github.com/sayaoailun",
 				},
 			},
 			License: &spec.License{
@@ -842,7 +842,7 @@ type ReleaseInfo struct {
 	Version   int      `json:"version" description:"version of release" default:"0"`
 }
 
-// information of release
+// empty body
 type EmptyBody struct {
 }
 
